@@ -1,0 +1,112 @@
+---
+title: "Emotionality influences beliefs- Pre-test"
+author: "Salonee Jukar & Matti Vuorre"
+date: "2025-03-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# Load required libraries
+#install.packages("")
+library(dplyr)
+library(psych)
+library(httr)
+library(tidyverse)
+library(stringr)
+```
+
+
+
+```{r}
+#Pre-Test A: Difference between Negative and Neutral ratings
+
+df<-read.csv2(file.choose(), header=T, sep = ";") #Stimuli_new downloaded from python and edited to seperate the 3 columns with negative, neutral and positive values
+View(df)
+
+df$Negative <- as.numeric(df$negative)
+df$Neutral <- as.numeric(df$neutral)
+
+# Filter for True (T) and Fake (F) headlines
+df_true <- df %>% filter(grepl("T", headline_no))
+df_fake <- df %>% filter(grepl("F", headline_no))
+
+# Further split into Emotional (E) and Neutral (N) for True (T) and Fake (F)
+df_fake_emotional <- df_fake %>% filter(grepl("E$", headline_no))
+df_fake_neutral <- df_fake %>% filter(grepl("N$", headline_no))
+
+df_true_emotional <- df_true %>% filter(grepl("E$", headline_no))
+df_true_neutral <- df_true %>% filter(grepl("N$", headline_no))
+
+
+# Perform independent t-tests on Negative Scores
+t_test_true <- t.test(df_true_emotional$Negative, df_true_neutral$Negative) #indicates that TE headlines had a higher negative score than TN headlines
+t_test_fake <- t.test(df_fake_emotional$Negative, df_fake_neutral$Negative) #indicates that FE headlines had a higher negative score than FN headlines
+
+t_test_true
+t_test_fake
+
+
+# Perform independent t-tests on Neutral Scores
+t_test_true_neu <- t.test(df_true_emotional$Neutral, df_true_neutral$Neutral) #indicates that TE headlines had a lower neutral score than TN headlines
+t_test_fake_neu <- t.test(df_fake_emotional$Neutral, df_fake_neutral$Neutral)#indicates that FE headlines had a lower neutral score than FN headlines
+
+t_test_true_neu
+t_test_fake_neu
+```
+
+
+ChatGPT analysis
+```{r}
+
+#Pre-test B: Chat GPT
+
+chatGPT_API <- "#insert your API"
+
+
+#The "hey_chatGPT function will help you access the API and prompt GPT 
+hey_chatGPT <- function(answer_my_question) {
+  chat_GPT_answer <- POST(
+    url = "https://api.openai.com/v1/chat/completions",
+    add_headers(Authorization = paste("Bearer", chatGPT_API)),
+    content_type_json(),
+    encode = "json",
+    body = list(
+      model = "gpt-4-turbo",
+      temperature = 0,
+      messages = list(
+        list(
+          role = "user",
+          content = answer_my_question
+        )
+      )
+    )
+  )
+  str_trim(content(chat_GPT_answer)$choices[[1]]$message$content)
+}
+
+
+
+# Create a "gpt" column
+df$gpt <- NA
+
+# Run a loop over your dataset and prompt ChatGPT - an example prompt for sentiment is given
+for (i in 1:nrow(df)) {
+  print(i)
+  question <- "How emotional is this headline on a 1 to 7 scale? Answer only with a number, with 1 being “not at all emotional” and 7 being “very emotional.” Here is the headline:"
+  text <- df[i,2]       
+  concat <- paste(question, text)
+  result <- hey_chatGPT(concat)
+  while(length(result) == 0){
+    result <- hey_chatGPT(concat)
+    print(result)
+  }
+  print(result)
+  df$gpt[i] <- result
+}
+
+
+View(df)
+
+```
+
+
