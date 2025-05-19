@@ -35,11 +35,9 @@ library(tidyverse)
 
 ```{r}
 # Read the CSV file with the appropriate delimiter
-column_names<-names(read.csv(file.choose(), nrows = 1))
-data<-read.csv(file.choose(), sep=",", skip = 128, header = FALSE)
-names(data) <- column_names
-
+data <- read.csv2(file.choose(), sep=";",header = T)
 View(data) #check if the loaded data looks correct
+
 #Descriptive statistics
 range(data$Age_1)
 mean(data$Age_1)
@@ -128,13 +126,14 @@ crt_2<-rep(data_B$CRT_score, each=16)
 CRT<-c(crt_1, crt_2)
 
 #Belief per participant
-belief_1 <- as.vector(t(data_A[, 19:34]))
-belief_2 <- as.vector(t(data_B[, 51:66]))
+belief_1 <- as.vector(t(data_A[, 8:23]))
+belief_2 <- as.vector(t(data_B[, 40:55]))
 belief<-c(belief_1, belief_2)
 
+
 #Emotionality rating
-emorating_1<-as.vector(t(data_A[,35:50]))
-emorating_2 <- as.vector(t(data_B[, 67:82]))
+emorating_1<-as.vector(t(data_A[,24:39]))
+emorating_2 <- as.vector(t(data_B[, 56:71]))
 emotionality_rating<-c(emorating_1, emorating_2)
 
 #group categorisation (Series A/B)
@@ -207,7 +206,7 @@ model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
 
 summary(model_ordinal)
 
-model_ordinal_c <- clmm(belief_mean_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+model_ordinal_c <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
     (1 | headline_code),
   data = data_n)
@@ -240,7 +239,7 @@ data_n$CRT_group <- cut(data_n$CRT,
                     labels = c("Low", "Medium", "High"))
 
 # Get predicted values for combinations of emotionality, veracity, and CRT_group
-mod<- clmm(belief_mean_ord ~ emotionality * veracity * CRT_group + age + gender + political_orientation +
+mod<- clmm(belief_mid_ord ~ emotionality * veracity * CRT_group + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
     (1 | headline_code),
   data = data_n)
