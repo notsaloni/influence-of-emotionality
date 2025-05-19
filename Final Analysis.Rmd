@@ -1,0 +1,295 @@
+---
+title: "Emotionality influences beliefs_Final Analysis"
+author: "Salonee Jukar & Matti Vuorre"
+date: "2025-05-01"
+output: pdf_document
+---
+
+```{r}
+rm(list = ls())#clear the R-environment
+options(scipen = 999) #cleaner interpretable output
+```
+
+```{r setup, include=FALSE}
+# Load required libraries
+#install.packages("")
+library(car)
+library(dplyr)
+library(effsize)
+library(emmeans)
+library(ggeffects)
+library(ggplot2)
+library(Hmisc)
+library(httr)
+library(lme4)
+library(lmerTest)
+library(Matrix)
+library(nnet)
+library(ordinal)
+library(psych)
+library(reshape2)
+library(stringr)
+library(tidyr)
+library(tidyverse)
+```
+
+```{r}
+# Read the CSV file with the appropriate delimiter
+column_names<-names(read.csv(file.choose(), nrows = 1))
+data<-read.csv(file.choose(), sep=",", skip = 128, header = FALSE)
+names(data) <- column_names
+
+View(data) #check if the loaded data looks correct
+#Descriptive statistics
+range(data$Age_1)
+mean(data$Age_1)
+sd(data$Age_1)
+table(data$Gender)
+edu<-table(data$Educational.level)
+prop.table(edu)
+```
+
+
+```{r}
+#per participant CRT score
+table(data$CRT1_1)
+score_1 <-ifelse(data$CRT1_1 == 4, 1, 0)
+
+table(data$CRT1_2)
+score_2 <-ifelse(data$CRT1_2 == 10, 1, 0)
+
+table(data$CRT1_3)
+score_3 <-ifelse(data$CRT1_3 == 39, 1, 0)
+
+table(data$CRT3_1)
+score_4 <-ifelse(data$CRT3_1 == 2, 1, 0)
+
+table(data$CRT3_2)
+score_5 <-ifelse(data$CRT3_2 == 8, 1, 0)
+
+table(data$CRT3_3)
+score_6 <- ifelse(tolower(trimws(data$CRT3_3)) == "emily", 1, 0)
+
+scores<-data.frame(score_1, score_2, score_3, score_4, score_5, score_6)
+data$CRT_score<-rowSums(scores) #added the CRT total for each participant in the data
+
+result <- psych::alpha(scores)#scale's reliability
+result$total$raw_alpha #he raw Cronbach’s alpha value — for binary items, this is equivalent to KR-20.
+
+#divide 2 data sets per Series (A and B)
+data_A <- subset(data, Series == "A")
+data_B <- subset(data, Series == "B")
+
+```
+
+```{r}
+#Clean data --> longform for the analysis
+column_headers<- names(participant_id, headline_code, emotionality, veracity, belief, age, gender, political_orientation, series, emotionality_rating, CRT)
+
+participant_id <- rep(1:105, each = 16)
+
+#headline codes
+grp1 <- rep(c("T1E","T2E","T3E","T4E","T5N","T6N","T7N","T8N",
+    "F1E","F2E","F3E","F4E","F5N","F6N","F7N","F8N"),
+  times = 53)
+
+grp2 <- rep(c("T1N","T2N","T3N","T4N","T5E","T6E","T7E","T8E",
+    "F1N","F2N","F3N","F4N","F5E","F6E","F7E","F8E"),
+  times = 52)
+# Combine into one column
+headline_code<- c(grp1, grp2)
+
+#headline emotionality (manipulated)
+grp1_emo <- rep(c(1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0), times = 53)
+grp2_emo <- rep(c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1), times = 52)
+emotionality<-c(grp1_emo, grp2_emo)
+
+#headline veracity (manipulated)
+veracity <- rep(c(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0), times = 105)
+
+#age per participant
+age_1<-rep(data_A$Age_1, each = 16)
+age_2<-rep(data_B$Age_1, each = 16)
+age<-c(age_1, age_2)
+
+#gender per participant
+gender_1<-rep(data_A$Gender, each = 16)
+gender_2<-rep(data_B$Gender, each = 16)
+gender<-c(gender_1, gender_2)
+
+#political orientation per participant
+po_1<-rep(data_A$Pol..partisanship._1, each = 16)
+po_2<-rep(data_B$Pol..partisanship._1, each = 16)
+political_orientation<-c(po_1, po_2)
+
+#CRT per participant
+crt_1<-rep(data_A$CRT_score, each = 16)
+crt_2<-rep(data_B$CRT_score, each=16)
+CRT<-c(crt_1, crt_2)
+
+#Belief per participant
+belief_1 <- as.vector(t(data_A[, 19:34]))
+belief_2 <- as.vector(t(data_B[, 51:66]))
+belief<-c(belief_1, belief_2)
+
+#Emotionality rating
+emorating_1<-as.vector(t(data_A[,35:50]))
+emorating_2 <- as.vector(t(data_B[, 67:82]))
+emotionality_rating<-c(emorating_1, emorating_2)
+
+#group categorisation (Series A/B)
+series <- c(rep("A", length(grp1)), rep("B", length(grp2)))
+
+rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2)#removing unnecessary variables from the environment
+
+#Creating a final data set 
+data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation)
+
+View(data_n)
+```
+
+```{r}
+#manipulation check
+mani_emo <- lm(emotionality_rating ~ emotionality, data = data_n)
+summary(mani_emo)
+
+mani_ver <- lm(emotionality_rating ~ veracity, data = data_n)
+summary(mani_ver)
+
+# Filter for True (T) and Fake (F) headlines
+true <- data_n %>% filter(grepl("T", headline_code))
+fake <- data_n %>% filter(grepl("F", headline_code))
+
+# Further split into Emotional (E) and Neutral (N) for True (T) and False (F)
+df_fake_highemo <- fake %>% filter(grepl("E$", headline_code))
+df_fake_lowemo <- fake %>% filter(grepl("N$", headline_code))
+
+df_true_highemo <- true %>% filter(grepl("E$", headline_code))
+df_true_lowemo <- true %>% filter(grepl("N$", headline_code))
+
+# Perform t-tests on emotionality ratings
+t.test(df_true_highemo$emotionality_rating, df_true_lowemo$emotionality_rating) #indicates that True high emotional headlines received a higher emotionality rating than True low emotional headlines
+cohen.d(df_true_highemo$emotionality_rating, df_true_lowemo$emotionality_rating)
+
+t.test(df_fake_highemo$emotionality_rating, df_fake_lowemo$emotionality_rating) #indicates that Fake high emotional headlines received a higher emotionality rating than Fake low emotional headlines
+cohen.d(df_fake_highemo$emotionality_rating, df_fake_lowemo$emotionality_rating)
+
+t.test(df_true_highemo$emotionality_rating, df_fake_highemo$emotionality_rating) #indicates that True high emotional and Fake high emotional headlines did not differ in their emotionality ratings
+t.test(df_true_lowemo$emotionality_rating, df_fake_lowemo$emotionality_rating) #indicates that True low emotional and Fake low emotional headlines did not differ in their emotionality ratings
+```
+
+```{r}
+#Centering the variables 
+data_n$belief_mid <- data_n$belief - 5.5
+data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
+
+#Main analysis
+model= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
+summary(model)  
+fixef(model) #only extracting the fixed-effects estimates
+confint(model) #confidence intervals for the fixed-effects estimates GIVING ISSUES AT THIS POINT
+
+#Secondary analysis controlling for demographics
+model_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
+summary(model_c)  
+fixef(model_c) #only extracting the fixed-effects estimates
+confint(model_c) #confidence intervals for the fixed-effects estimates GIVING ISSUES AT THIS POINT
+```
+
+```{r}
+#Sensitivity analysis with ordinal data cumulative link mixed model (Ordinal logistic mixed model)
+data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE)
+
+model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
+    (1 + emotionality * veracity | participant_id) +
+    (1 | headline_code),
+  data = data_n)
+
+summary(model_ordinal)
+
+model_ordinal_c <- clmm(belief_mean_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+    (1 + emotionality*veracity | participant_id) +
+    (1 | headline_code),
+  data = data_n)
+
+summary(model_ordinal_c) #with demographic controls, emotionality main effect marginally significant!
+coef <- model_ordinal_c$beta 
+se <- sqrt(diag(vcov(model_ordinal_c)))[names(model_ordinal_c$beta)]
+
+# 95% CI
+lower <- coef - 1.96 * se
+upper <- coef + 1.96 * se
+
+#beta- raw effect sizes
+beta<-data.frame(names(coef), coef, se, lower, upper)
+
+# For odds ratios
+exp_coef <- exp(coef)
+exp_lower <- exp(lower)
+exp_upper <- exp(upper)
+
+OR<-data.frame(names(exp_coef), exp_coef, exp_lower, exp_upper)
+```
+
+```{r}
+#Moderation graph
+table(data_n$CRT)
+#grouping CRT scores in 3 groups: Low (0-2), Medium (3-4); High(5-6)
+data_n$CRT_group <- cut(data_n$CRT,
+                    breaks = c(-Inf, 2, 4, Inf),
+                    labels = c("Low", "Medium", "High"))
+
+# Get predicted values for combinations of emotionality, veracity, and CRT_group
+mod<- clmm(belief_mean_ord ~ emotionality * veracity * CRT_group + age + gender + political_orientation +
+    (1 + emotionality*veracity | participant_id) +
+    (1 | headline_code),
+  data = data_n)
+summary(mod)
+emm <- emmeans(mod, ~ emotionality * veracity * CRT_group, at = list(CRT_group = c("Low", "Medium", "High")))
+
+pred_data <- summary(emm)
+pred_data$veracity <- factor(pred_data$veracity, levels = c("1", "0"))  # Order: True (1) first, then False (0)
+
+ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(veracity), group = veracity)) +
+  geom_point(size = 3) +
+  geom_line() +
+  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), width = 0.1) +
+  scale_color_manual(
+    name = "Veracity",
+    values = c("1" = "darkseagreen4", "0" = "indianred"),#darkcyan #coral2
+    labels = c("1" = "True", "0" = "False")
+  ) +
+  facet_wrap(~ factor(emotionality), labeller = labeller(`factor(emotionality)` = c("0" = "Low emotionality", "1" = "High emotionality"))) +
+  labs(x = "CRT Group", y = "Belief", color = "Veracity") +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 10),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    strip.text = element_text(size = 14)
+  )
+```
+
+
+
+```{r}
+#Assumption checks 
+# Residuals vs. fitted values
+plot(model) #strong slant lines
+
+# Q-Q plot for residuals
+qqnorm(resid(model))
+qqline(resid(model))
+
+table(data_n$belief) #Since we have enough levels (11) to reasonably consider treating it as continuous.
+table(data_n$belief_mid) 
+
+ggplot(data_n, aes(x = belief_mid)) +
+  geom_bar(fill = "steelblue3") +
+  labs(title = "Distribution of Belief", x = "Belief stages", y = "Count") +
+  theme_minimal()
+
+prop.table(table(data_n$belief_mid)) #The distribution is somewhat skewed, with ~24% of responses at stage 0. However, all levels are represented, and no single level dominates the majority (e.g., nothing above 50%).
+```
