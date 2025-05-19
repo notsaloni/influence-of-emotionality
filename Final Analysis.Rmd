@@ -82,8 +82,6 @@ data_B <- subset(data, Series == "B")
 
 ```{r}
 #Clean data --> longform for the analysis
-column_headers<- names(participant_id, headline_code, emotionality, veracity, belief, age, gender, political_orientation, series, emotionality_rating, CRT)
-
 participant_id <- rep(1:105, each = 16)
 
 #headline codes
@@ -185,14 +183,11 @@ data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
 #Main analysis
 model= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
 summary(model)  
-fixef(model) #only extracting the fixed-effects estimates
-confint(model) #confidence intervals for the fixed-effects estimates GIVING ISSUES AT THIS POINT
+
 
 #Secondary analysis controlling for demographics
 model_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
 summary(model_c)  
-fixef(model_c) #only extracting the fixed-effects estimates
-confint(model_c) #confidence intervals for the fixed-effects estimates GIVING ISSUES AT THIS POINT
 ```
 
 ```{r}
