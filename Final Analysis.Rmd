@@ -198,15 +198,14 @@ model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
     (1 | headline_code),
   data = data_n)
-
 summary(model_ordinal)
 
 model_ordinal_c <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
     (1 | headline_code),
   data = data_n)
-
 summary(model_ordinal_c) #with demographic controls, emotionality main effect marginally significant!
+
 coef <- model_ordinal_c$beta 
 se <- sqrt(diag(vcov(model_ordinal_c)))[names(model_ordinal_c$beta)]
 
@@ -227,18 +226,19 @@ OR<-data.frame(names(exp_coef), exp_coef, exp_lower, exp_upper)
 
 ```{r}
 #Moderation graph
-table(data_n$CRT)
 #grouping CRT scores in 3 groups: Low (0-2), Medium (3-4); High(5-6)
 data_n$CRT_group <- cut(data_n$CRT,
                     breaks = c(-Inf, 2, 4, Inf),
                     labels = c("Low", "Medium", "High"))
+tables(data_n$CRT_group)
 
 # Get predicted values for combinations of emotionality, veracity, and CRT_group
-mod<- clmm(belief_mid_ord ~ emotionality * veracity * CRT_group + age + gender + political_orientation +
-    (1 + emotionality*veracity | participant_id) +
+mod<- lmer(belief_mid ~ emotionality * veracity * CRT_group +
+    (1 + emotionality * veracity | participant_id) +
     (1 | headline_code),
   data = data_n)
 summary(mod)
+
 emm <- emmeans(mod, ~ emotionality * veracity * CRT_group, at = list(CRT_group = c("Low", "Medium", "High")))
 
 pred_data <- summary(emm)
@@ -247,7 +247,7 @@ pred_data$veracity <- factor(pred_data$veracity, levels = c("1", "0"))  # Order:
 ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(veracity), group = veracity)) +
   geom_point(size = 3) +
   geom_line() +
-  geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL), width = 0.1) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
   scale_color_manual(
     name = "Veracity",
     values = c("1" = "darkseagreen4", "0" = "indianred"),#darkcyan #coral2
