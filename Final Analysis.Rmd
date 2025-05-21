@@ -13,6 +13,7 @@ options(scipen = 999) #cleaner interpretable output
 ```{r setup, include=FALSE}
 # Load required libraries
 #install.packages("")
+library(brms)
 library(car)
 library(dplyr)
 library(effsize)
@@ -28,6 +29,7 @@ library(nnet)
 library(ordinal)
 library(psych)
 library(reshape2)
+library(simr)
 library(stringr)
 library(tidyr)
 library(tidyverse)
@@ -290,11 +292,57 @@ summary(power_result_3inter_200)
 summary(power_result_3inter_400) 
 
 #for clmm
+model_brms <- brm(
+  belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+    (1 + emotionality * veracity | participant_id) + (1 | headline_code),
+  data = data_n,
+  family = cumulative(link = "logit"),
+  chains = 4, cores = 4, iter = 2000
+)
 
+# 2. Simulate ordinal responses from the posterior
+set.seed(123)
+sim_data <- posterior_predict(model_brms, ndraws = 100)
+
+n_draws <- 100
+sig_results_interaction <- logical(n_draws)
+sig_results_emotionality <- logical(n_draws)
+
+for (i in 1:n_draws) {
+  cat("Simulating dataset", i, "\n")
+  
+  # Simulated data
+  data_sim <- data_n
+  data_sim$belief_mid_ord <- factor(sim_data[i, ], ordered = TRUE)
+  
+  # Refit model
+  model_sim <- brm(
+    belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+      (1 + emotionality * veracity | participant_id) + (1 | headline_code),
+    data = data_sim,
+    family = cumulative(),
+    chains = 2, iter = 1000, warmup = 500, refresh = 0
+  )
+  
+  # Check 3-way interaction
+  post_interaction <- posterior_summary(model_sim, pars = "b_emotionality:veracity:CRT_c")
+  ci_int <- post_interaction[1, c("Q2.5", "Q97.5")]
+  sig_results_interaction[i] <- !(ci_int[1] < 0 & ci_int[2] > 0)
+  
+  # Check main effect
+  post_main <- posterior_summary(model_sim, pars = "b_emotionality")
+  ci_main <- post_main[1, c("Q2.5", "Q97.5")]
+  sig_results_emotionality[i] <- !(ci_main[1] < 0 & ci_main[2] > 0)
+}
+
+# Posterior power estimates
+posterior_power_interaction <- mean(sig_results_interaction)
+posterior_power_emotionality <- mean(sig_results_emotionality)
+
+cat("Estimated power (interaction):", posterior_power_interaction, "\n")
+cat("Estimated power (main effect):", posterior_power_emotionality, "\n")
 
 ```
-
-
 
 
 ```{r}
