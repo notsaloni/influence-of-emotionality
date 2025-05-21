@@ -292,13 +292,11 @@ summary(power_result_3inter_200)
 summary(power_result_3inter_400) 
 
 #for clmm
-model_brms <- brm(
-  belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+model_brms <- brm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality * veracity | participant_id) + (1 | headline_code),
   data = data_n,
   family = cumulative(link = "logit"),
-  chains = 4, cores = 4, iter = 2000
-)
+  chains = 4, cores = 4, iter = 2000)
 
 # 2. Simulate ordinal responses from the posterior
 set.seed(123)
