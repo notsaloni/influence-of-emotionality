@@ -266,6 +266,35 @@ ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(veracity), group
   )
 ```
 
+```{r}
+#POWER CALCULATION
+#for lmer model
+model_sim_105 <- extend(model_lmer, along = "participant_id", n = 105)
+model_sim_200 <- extend(model_lmer, along = "participant_id", n = 200)
+model_sim_400 <- extend(model_lmer, along = "participant_id", n = 400)
+
+power_emo_105 <- powerSim(model_sim_105, test = simr::fixed("emotionality", "z"), nsim = 100)
+power_emo_200 <- powerSim(model_sim_200, test = simr::fixed("emotionality", "z"), nsim = 100)
+power_emo_400 <- powerSim(model_sim_400, test = simr::fixed("emotionality", "z"), nsim = 100)
+
+summary(power_emo_105) #observed power current sample 43% LOW
+summary(power_emo_200)
+summary(power_emo_400)
+
+power_result_3inter_105 <- powerSim(model_sim_105, test = simr::fixed("emotionality:veracity:CRT_c", "z"), nsim = 100)
+power_result_3inter_200 <- powerSim(model_sim_200, test = simr::fixed("emotionality:veracity:CRT_c", "z"), nsim = 100)
+power_result_3inter_400 <- powerSim(model_sim_400, test = simr::fixed("emotionality:veracity:CRT_c", "z"), nsim = 100)
+
+summary(power_result_3inter_105) #observed power current sample 68% power
+summary(power_result_3inter_200)
+summary(power_result_3inter_400) 
+
+#for clmm
+
+
+```
+
+
 
 
 ```{r}
@@ -287,3 +316,6 @@ ggplot(data_n, aes(x = belief_mid)) +
 
 prop.table(table(data_n$belief_mid)) #The distribution is somewhat skewed, with ~24% of responses at stage 0. However, all levels are represented, and no single level dominates the majority (e.g., nothing above 50%).
 ```
+
+
+
