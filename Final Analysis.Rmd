@@ -183,13 +183,14 @@ data_n$belief_mid <- data_n$belief - 5.5
 data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
 
 #Main analysis
-model= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
+model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
 summary(model)  
 
-
 #Secondary analysis controlling for demographics
-model_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
+model_lmer_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
 summary(model_c)  
+
+anova(model_lmer, model_lmer_c) #no significant improvement after adding covariates
 ```
 
 ```{r}
@@ -224,6 +225,14 @@ exp_lower <- exp(lower)
 exp_upper <- exp(upper)
 
 OR<-data.frame(names(exp_coef), exp_coef, exp_lower, exp_upper)
+
+#Model fit indices
+BIC(model_ordinal)
+BIC(model_ordinal_c)
+logLik(model_ordinal)
+logLik(model_ordinal_c)
+
+anova(model_ordinal, model_ordinal_c)
 ```
 
 ```{r}
