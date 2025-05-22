@@ -200,31 +200,16 @@ data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE)
 model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
     (1 | headline_code),
-  data = data_n)
+  data = data_n, link="probit")
 summary(model_ordinal)
 
 model_ordinal_c <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
     (1 | headline_code),
-  data = data_n)
+  data = data_n, link="probit")
 summary(model_ordinal_c) #with demographic controls, emotionality main effect marginally significant!
 
 coef <- model_ordinal_c$beta 
-se <- sqrt(diag(vcov(model_ordinal_c)))[names(model_ordinal_c$beta)]
-
-# 95% CI
-lower <- coef - 1.96 * se
-upper <- coef + 1.96 * se
-
-#beta- raw effect sizes
-beta<-data.frame(names(coef), coef, se, lower, upper)
-
-# For odds ratios
-exp_coef <- exp(coef)
-exp_lower <- exp(lower)
-exp_upper <- exp(upper)
-
-OR<-data.frame(names(exp_coef), exp_coef, exp_lower, exp_upper)
 
 #Model fit indices
 BIC(model_ordinal)
@@ -266,6 +251,27 @@ ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(veracity), group
   ) +
   facet_wrap(~ factor(emotionality), labeller = labeller(`factor(emotionality)` = c("0" = "Low emotionality", "1" = "High emotionality"))) +
   labs(x = "CRT Group", y = "Belief", color = "Veracity") +
+  theme_minimal()+
+  theme(
+    text = element_text(size = 10),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 13),
+    strip.text = element_text(size = 14)
+  )
+
+ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(emotionality), group = emotionality)) +
+  geom_point(size = 3) +
+  geom_line() +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+  scale_color_manual(
+    name = "Emotionality",
+    values = c("1" = "palevioletred4", "0" = "lightslategrey"),#darkcyan #coral2
+    labels = c("1" = "High", "0" = "Low")
+  ) +
+  facet_wrap(~ factor(veracity), labeller = labeller(`factor(veracity)` = c("0" = "False", "1" = "True"))) +
+  labs(x = "CRT Group", y = "Accuracy Belief", color = "Emotionality") +
   theme_minimal()+
   theme(
     text = element_text(size = 10),
