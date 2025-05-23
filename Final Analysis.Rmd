@@ -105,6 +105,10 @@ emotionality<-c(grp1_emo, grp2_emo)
 #headline veracity (manipulated)
 veracity <- rep(c(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0), times = 105)
 
+con_1 <- rep(c(rep("High-True", 4), rep("Low-True", 4), rep("High-False", 4), rep("Low-False", 4)), times = 53)
+con_2<- rep(c( rep("Low-True", 4), rep("High-True", 4),rep("Low-False", 4), rep("High-False", 4)), times = 52)
+condition<-c(con_1, con_2)
+
 #age per participant
 age_1<-rep(data_A$Age_1, each = 16)
 age_2<-rep(data_B$Age_1, each = 16)
@@ -130,7 +134,6 @@ belief_1 <- as.vector(t(data_A[, 8:23]))
 belief_2 <- as.vector(t(data_B[, 40:55]))
 belief<-c(belief_1, belief_2)
 
-
 #Emotionality rating
 emorating_1<-as.vector(t(data_A[,24:39]))
 emorating_2 <- as.vector(t(data_B[, 56:71]))
@@ -144,10 +147,10 @@ edu_1<-rep(data_A$Educational.level, each = 16)
 edu_2<-rep(data_B$Educational.level, each = 16)
 education<-c(edu_1, edu_2)
 
-rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2, edu_1, edu_2)#removing unnecessary variables from the environment
+rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2, edu_1, edu_2, con_1, con_2)#removing unnecessary variables from the environment
 
 #Creating a final data set 
-data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation, education)
+data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation, education, condition)
 
 #Centering the variables
 data_n$belief_mid <- data_n$belief - 5.5
@@ -329,10 +332,6 @@ ggplot(data_n, aes(x = CRT, y = belief, color = as.factor(emotionality))) +
   theme_minimal()
 
 #1 combined graph
-con_1 <- rep(c(rep("High-True", 4), rep("Low-True", 4), rep("High-False", 4), rep("Low-False", 4)), times = 53)
-con_2<- rep(c( rep("Low-True", 4), rep("High-True", 4),rep("Low-False", 4), rep("High-False", 4)), times = 52)
-data_n$condition<-c(con_1, con_2)
-
 # Relabel the levels for clearer legend
 data_n$condition <- factor(data_n$condition, levels = c("Low-True", "High-True", "Low-False", "High-False"))
 
