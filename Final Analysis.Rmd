@@ -139,10 +139,20 @@ emotionality_rating<-c(emorating_1, emorating_2)
 #group categorisation (Series A/B)
 series <- c(rep("A", length(grp1)), rep("B", length(grp2)))
 
-rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2)#removing unnecessary variables from the environment
+#education
+edu_1<-rep(data_A$Educational.level, each = 16)
+edu_2<-rep(data_B$Educational.level, each = 16)
+education<-c(edu_1, edu_2)
+
+rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2, edu_1, edu_2)#removing unnecessary variables from the environment
 
 #Creating a final data set 
-data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation)
+data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation, education)
+
+#Centering the variables
+data_n$belief_mid <- data_n$belief - 5.5
+data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
+data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE) #accuracy belief as an ordinal variable
 
 View(data_n)
 ```
@@ -178,25 +188,6 @@ t.test(df_true_lowemo$emotionality_rating, df_fake_lowemo$emotionality_rating) #
 ```
 
 ```{r}
-#Centering the variables 
-data_n$belief_mid <- data_n$belief - 5.5
-data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
-
-#Main analysis
-model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
-summary(model)  
-
-#Secondary analysis controlling for demographics
-model_lmer_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
-summary(model_c)  
-
-anova(model_lmer, model_lmer_c) #no significant improvement after adding covariates
-```
-
-```{r}
-#Sensitivity analysis with ordinal data cumulative link mixed model (Ordinal logistic mixed model)
-data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE)
-
 model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
     (1 | headline_code),
@@ -211,14 +202,53 @@ summary(model_ordinal_c) #with demographic controls, emotionality main effect ma
 
 coef <- model_ordinal_c$beta 
 
-#Model fit indices
-BIC(model_ordinal)
-BIC(model_ordinal_c)
-logLik(model_ordinal)
-logLik(model_ordinal_c)
-
 anova(model_ordinal, model_ordinal_c)
+
+#Bar plot
+data_n <- data_n %>%
+  mutate(
+    veracity_f = factor(veracity, levels = c(0,1), labels = c("False", "True")),
+    emotionality_f = factor(emotionality, levels = c(0,1), labels = c("Low Emotional", "High Emotional"))
+  )
+
+summary_df <- data_n %>%
+  group_by(veracity_f, emotionality_f) %>%
+  summarise(
+    mean_belief = mean(belief, na.rm = TRUE),
+    sd_belief = sd(belief, na.rm = TRUE),
+    n = n(),
+    se = sd_belief / sqrt(n),
+    ci_lower = mean_belief - qt(0.975, df = n - 1) * se,
+    ci_upper = mean_belief + qt(0.975, df = n - 1) * se
+  )
+
+# Plot
+ggplot(summary_df, aes(x = veracity_f, y = mean_belief, fill = emotionality_f)) +
+  geom_bar(stat = "identity", position = position_dodge(0.8), width = 0.7) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper),
+                position = position_dodge(0.8), width = 0.25) +
+  scale_fill_manual(values = c("Low Emotional" = "slategray2", "High Emotional" = "salmon3")) +
+  labs(
+    x = "Headline Veracity",
+    y = "Average Accuracy Belief",
+    fill = "Emotionality"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
 ```
+
+```{r}
+#Using lmer for sensitvity check
+model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
+summary(model)  
+
+#Secondary analysis controlling for demographics
+model_lmer_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
+summary(model_c)  
+
+anova(model_lmer, model_lmer_c) #no significant improvement after adding covariates
+```
+
 
 ```{r}
 #Moderation graph
@@ -282,6 +312,23 @@ ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(emotionality), g
     strip.text = element_text(size = 14)
   )
 
+#Line graph
+#2 separate graphs 
+ggplot(data_n, aes(x = CRT, y = belief, color = as.factor(emotionality))) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ veracity, labeller = as_labeller(c("0" = "False", "1" = "True"))) +
+   scale_color_manual(
+    values = c("1" = "palevioletred4", "0" = "lightslategrey"),
+    labels = c("1" = "High", "0" = "Low")
+  ) +
+  labs(
+    x = "Cognitive Reflection Test (CRT) Score",
+    y = "Perceived Accuracy",
+    color = "Emotionality"
+  ) +
+  theme_minimal()
+
+#1 combined graph
 con_1 <- rep(c(rep("High-True", 4), rep("Low-True", 4), rep("High-False", 4), rep("Low-False", 4)), times = 53)
 con_2<- rep(c( rep("Low-True", 4), rep("High-True", 4),rep("Low-False", 4), rep("High-False", 4)), times = 52)
 data_n$condition<-c(con_1, con_2)
@@ -325,56 +372,6 @@ power_result_3inter_400 <- powerSim(model_sim_400, test = simr::fixed("emotional
 summary(power_result_3inter_105) #observed power current sample 68% power
 summary(power_result_3inter_200)
 summary(power_result_3inter_400) 
-
-#for clmm
-model_brms <- brm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
-    (1 + emotionality * veracity | participant_id) + (1 | headline_code),
-  data = data_n,
-  family = cumulative(link = "logit"),
-  chains = 4, cores = 4, iter = 2000)
-
-# 2. Simulate ordinal responses from the posterior
-set.seed(123)
-sim_data <- posterior_predict(model_brms, ndraws = 100)
-
-n_draws <- 100
-sig_results_interaction <- logical(n_draws)
-sig_results_emotionality <- logical(n_draws)
-
-for (i in 1:n_draws) {
-  cat("Simulating dataset", i, "\n")
-  
-  # Simulated data
-  data_sim <- data_n
-  data_sim$belief_mid_ord <- factor(sim_data[i, ], ordered = TRUE)
-  
-  # Refit model
-  model_sim <- brm(
-    belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
-      (1 + emotionality * veracity | participant_id) + (1 | headline_code),
-    data = data_sim,
-    family = cumulative(),
-    chains = 2, iter = 1000, warmup = 500, refresh = 0
-  )
-  
-  # Check 3-way interaction
-  post_interaction <- posterior_summary(model_sim, pars = "b_emotionality:veracity:CRT_c")
-  ci_int <- post_interaction[1, c("Q2.5", "Q97.5")]
-  sig_results_interaction[i] <- !(ci_int[1] < 0 & ci_int[2] > 0)
-  
-  # Check main effect
-  post_main <- posterior_summary(model_sim, pars = "b_emotionality")
-  ci_main <- post_main[1, c("Q2.5", "Q97.5")]
-  sig_results_emotionality[i] <- !(ci_main[1] < 0 & ci_main[2] > 0)
-}
-
-# Posterior power estimates
-posterior_power_interaction <- mean(sig_results_interaction)
-posterior_power_emotionality <- mean(sig_results_emotionality)
-
-cat("Estimated power (interaction):", posterior_power_interaction, "\n")
-cat("Estimated power (main effect):", posterior_power_emotionality, "\n")
-
 ```
 
 
