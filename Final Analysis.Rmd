@@ -281,6 +281,26 @@ ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(emotionality), g
     legend.text = element_text(size = 13),
     strip.text = element_text(size = 14)
   )
+
+con_1 <- rep(c(rep("High-True", 4), rep("Low-True", 4), rep("High-False", 4), rep("Low-False", 4)), times = 53)
+con_2<- rep(c( rep("Low-True", 4), rep("High-True", 4),rep("Low-False", 4), rep("High-False", 4)), times = 52)
+data_n$condition<-c(con_1, con_2)
+
+# Relabel the levels for clearer legend
+data_n$condition <- factor(data_n$condition, levels = c("Low-True", "High-True", "Low-False", "High-False"))
+
+ggplot(data_n, aes(x = CRT, y = belief, color = condition, linetype = condition)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(
+    values = c("Low-False" = "indianred","High-False" = "red4","Low-True" = "paleturquoise3","High-True" = "seagreen4"), 
+   labels = c("Low-True" = "Low Emotionality - True", "High-True" = "High Emotionality - True", "Low-False" = "Low Emotionality - False", "High-False" = "High Emotionality - False"), name = "Condition") +
+  scale_linetype_manual(
+    values = c("Low-True" = "dotted","High-True" = "solid","Low-False" = "dotted","High-False" = "solid"), 
+   labels = c("Low-True" = "Low Emotionality - True","High-True" = "High Emotionality - True","Low-False" = "Low Emotionality - False", "High-False" = "High Emotionality - False"), name = "Condition") +
+  labs(x = "CRT",y = "Accuracy Belief", color = "Condition") +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 14),axis.title.y = element_text(size = 14), legend.title = element_text(size = 14),legend.text = element_text(size = 12)
+  )
 ```
 
 ```{r}
