@@ -370,5 +370,86 @@ ggplot(data_n, aes(x = belief_mid)) +
 prop.table(table(data_n$belief_mid)) #The distribution is somewhat skewed, with ~24% of responses at stage 0. However, all levels are represented, and no single level dominates the majority (e.g., nothing above 50%).
 ```
 
+```{r}
+#ADDITIONAL PLOTS
+#################
+headline_labels <- c("T1E", "T2E", "T3E", "T4E", "T5N", "T6N", "T7N", "T8N", "F1E", "F2E", "F3E", "F4E", "F5N", "F6N", "F7N", "F8N","T1N", "T2N", "T3N", "T4N", "T5E", "T6E", "T7E", "T8E", "F1N", "F2N", "F3N", "F4N", "F5E", "F6E", "F7E", "F8E")
+custom_order <- c("T1E","T1N","T2E","T2N","T3E","T3N","T4E","T4N","T5E","T5N","T6E","T6N","T7E","T7N","T8E", "T8N", "F1E","F1N",  "F2E",  "F2N", "F3E",  "F3N", "F4E", "F4N", "F5E",   "F5N","F6E",   "F6N","F7E",  "F7N","F8E",  "F8N")
+
+belief_items<- data[, c(8:23, 40:55)]
+emotionality_items<- data[, c(24:39, 56:71)]
+
+#function to compute mean, SE, and 95% CI bounds_apply to emotionality and belief items
+get_item_stats <- function(x) {
+  n <- sum(!is.na(x))
+  mean_val <- mean(x, na.rm = TRUE)
+  se <- sd(x, na.rm = TRUE) / sqrt(n)
+  ci_width <- qt(0.975, df = n - 1) * se  # 95% CI
+  lower_ci <- mean_val - ci_width
+  upper_ci <- mean_val + ci_width
+  return(c(mean = mean_val, SE = se, lower_CI = lower_ci, upper_CI = upper_ci))
+}
+
+item_summary <- t(apply(emotionality_items, 2, get_item_stats))#emotionality items
+item_summary_df <- as.data.frame(item_summary)
+item_summary_df$headline <- headline_labels
+item_summary_df$headline <- factor(headline_labels, levels = custom_order)
+item_summary_df <- item_summary_df %>%
+  mutate(truth = ifelse(grepl("^T", headline), "True", "False"))
+item_summary_df <- item_summary_df %>%
+  mutate(emotionality = ifelse(grepl("E$", headline), "High Emotionality", "Low Emotionality"))
+
+# View output
+head(item_summary_df)
+str(item_summary_df)
+
+
+item_summary_bf <- t(apply(belief_items, 2, get_item_stats)) #belief items
+item_summary_bfdf <- as.data.frame(item_summary_bf)
+item_summary_bfdf$headline <- headline_labels
+item_summary_bfdf$headline <- factor(headline_labels, levels = custom_order)
+item_summary_bfdf <- item_summary_bfdf %>%
+  mutate(truth = ifelse(grepl("^T", headline), "True", "False"))
+item_summary_bfdf <- item_summary_bfdf %>%
+  mutate(emotionality = ifelse(grepl("E$", headline), "High Emotionality", "Low Emotionality"))
+
+# View output
+head(item_summary_bfdf)
+str(item_summary_bfdf)
+
+
+# Plot Emotionality Ratings with error bars
+ggplot(item_summary_df, aes(x = headline, y = mean, fill = emotionality)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.2) +
+  scale_fill_manual(values = c("High Emotionality" = "#FD6467", "Low Emotionality" = "#F1BB7B"),
+                    name = "Emotionality") +
+  facet_wrap(~truth, scales = "free_x") +
+  labs(x = "Headline Code", y = "Mean Emotionality Rating") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    strip.text = element_text(size = 14, face = "bold")
+  )
+
+
+# Plot Belief Ratings with error bars
+ggplot(item_summary_bfdf, aes(x = headline, y = mean, fill = emotionality)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.2) +
+  scale_fill_manual(values = c("High Emotionality" = "#FD6467", "Low Emotionality" = "#F1BB7B"),
+                    name = "Emotionality") +
+  facet_wrap(~truth, scales = "free_x") +
+  labs(x = "Headline Code", y = "Mean Belief Rating") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    strip.text = element_text(size = 14, face = "bold")
+  )
+
+
+```
 
 
