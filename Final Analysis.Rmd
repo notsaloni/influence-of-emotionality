@@ -27,6 +27,7 @@ library(lmerTest)
 library(Matrix)
 library(nnet)
 library(ordinal)
+library(patchwork)
 library(psych)
 library(reshape2)
 library(simr)
@@ -315,6 +316,49 @@ ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(emotionality), g
     strip.text = element_text(size = 14)
   )
 
+###
+# Subset high emotionality headlines
+data_emotional <- data_n[grepl("E$", data_n$headline_code), ]
+
+# Subset all low emotionality headlines
+data_neutral <- data_n[grepl("N$", data_n$headline_code), ]
+
+discernment_emodf <- data_emotional %>%
+  group_by(participant_id, veracity) %>%
+  summarise(mean_belief = mean(belief, na.rm = TRUE), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = veracity, values_from = mean_belief, names_prefix = "veracity_") %>%
+  mutate(discernment = veracity_1 - veracity_0) %>%
+  dplyr::select(participant_id, discernment)
+discernment_emodf$CRT<-data$CRT_score
+
+plot1<- ggplot(discernment_emodf, aes(x = CRT, y = discernment)) +
+  geom_point(size = 1, color = "grey3") + 
+  geom_smooth(method = "lm", se = TRUE, color = "red", fill= "pink") +# scatter points
+  scale_x_continuous(breaks = 0:6, limits = c(0, 6)) +
+  scale_y_continuous(breaks = c(-5, 0, 5),limits = c(-5, 8.3) ) +
+  labs(title = "High Emotionality",x = "CRT Score", y = "Truth Discernment") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+discernment_neudf <- data_neutral %>%
+  group_by(participant_id, veracity) %>%
+  summarise(mean_belief = mean(belief, na.rm = TRUE), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = veracity, values_from = mean_belief, names_prefix = "veracity_") %>%
+  mutate(discernment = veracity_1 - veracity_0) %>%
+  dplyr::select(participant_id, discernment)
+discernment_neudf$CRT<-data$CRT_score
+
+plot2<-ggplot(discernment_neudf, aes(x = CRT, y = discernment)) +
+  geom_point(size = 1, color = "grey3") + 
+  geom_smooth(method = "lm", se = T, color = "red", fill= "pink") +# scatter points
+  scale_x_continuous(breaks = 0:6, limits = c(0, 6)) +
+  labs(title = "Low Emotionality", x = "CRT Score", y = "Truth Discernment") +
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5))
+
+plot1 + plot2
+###
+
 #Line graph
 #2 separate graphs 
 ggplot(data_n, aes(x = CRT, y = belief, color = as.factor(emotionality))) +
@@ -403,7 +447,6 @@ item_summary_df <- item_summary_df %>%
 head(item_summary_df)
 str(item_summary_df)
 
-
 item_summary_bf <- t(apply(belief_items, 2, get_item_stats)) #belief items
 item_summary_bfdf <- as.data.frame(item_summary_bf)
 item_summary_bfdf$headline <- headline_labels
@@ -433,7 +476,6 @@ ggplot(item_summary_df, aes(x = headline, y = mean, fill = emotionality)) +
     strip.text = element_text(size = 14, face = "bold")
   )
 
-
 # Plot Belief Ratings with error bars
 ggplot(item_summary_bfdf, aes(x = headline, y = mean, fill = emotionality)) +
   geom_bar(stat = "identity", width = 0.6) +
@@ -448,8 +490,6 @@ ggplot(item_summary_bfdf, aes(x = headline, y = mean, fill = emotionality)) +
     axis.text.y = element_text(size = 12),
     strip.text = element_text(size = 14, face = "bold")
   )
-
-
 ```
 
 
