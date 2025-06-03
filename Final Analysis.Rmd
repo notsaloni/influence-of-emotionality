@@ -163,11 +163,8 @@ View(data_n)
 
 ```{r}
 #manipulation check
-mani_emo <- lm(emotionality_rating ~ emotionality, data = data_n)
+mani_emo <- lm(emotionality_rating ~ emotionality + veracity, data = data_n)
 summary(mani_emo)
-
-mani_ver <- lm(emotionality_rating ~ veracity, data = data_n)
-summary(mani_ver)
 
 # Filter for True (T) and Fake (F) headlines
 true <- data_n %>% filter(grepl("T", headline_code))
