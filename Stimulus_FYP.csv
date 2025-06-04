@@ -1,0 +1,33 @@
+﻿sr_no;headlines;headline_no;negative;neutral;positive;chatgpt
+1;Stephen Hawking says A.I. could be ‘worst event in the history of our civilization’;T1E;0.8509;0.1374;0.0117;6
+2;As vaccinations lag, Italy's elderly again pay a price;T2E;0.7366;0.2465;0.0168;5
+3;Bent the knee: Outrage as NASA scrubs women and Indigenous people off website;T3E;0.7722;0.2196;0.0082;6
+4;Scheming' AI bot ChatGPT tried to stop itself being shut down - and LIED when challenged by researchers,;T4E;0.8201;0.1714;0.0086;6
+5;Google's Gemini turns villain: AI asks user to die, calls him 'waste of time, a burden on society';T5E;0.8648;0.1286;0.0066;7
+6;The Dangerous Ingredients Once Used in Overnight Cough Syrups- contained cannabis, morphine, and chloroform;T6E;0.774;0.2137;0.0123;4
+7;Deep in the Gulf of Mexico lies the 'Jacuzzi of Despair' a deadly brine pool that kills anything that enters its waters.;T7E;0.9108;0.0833;0.0059;6
+8;Holiday danger: Some snow globes contain a toxic chemical used in antifreeze, which can be deadly to pets;T8E;0.7703;0.2162;0.0135;5
+9;Facebook Shuts Down AI System After Inventing Its Own Language... And The Robot Uprising Begins;F1E;0.6897;0.2959;0.0144;5
+10;European Medicines Agency admits COVID Vaccination causes Infertility and Miscarriage;F2E;0.6931;0.2962;0.0107;6
+11;500 UK Churches Closed While 423 Mosques Were Built on 'Sad Ruins of English Christianity': Report;F3E;0.7925;0.1991;0.0084;5
+12;Nazism returns: European Union to put warning labels on Jewish-made products;F4E;0.6455;0.3411;0.0134;7
+13;WEF Pushes Plan for Humanity to Be ‘Dominated’ by ‘Emotionless’ AI, recreate 'religions that are actually correct and 'rewrite a new Bible';F5E;0.5701;0.4068;0.0231;7
+14;Anyone who is caught farting inside a Disney theme park may be kicked out and potentially banned for life.;F6E;0.8584;0.1313;0.0103;4
+15;"The World Economic Forum ""wants to slaughter millions of pet cats and dogs to fight climate change.""";F7E;0.8334;0.1565;0.0101;7
+16;Disgusting! Oreo cookies found to contain PORK. Watch out vegetarians and Muslims.;F8E;0.916;0.076;0.008;6
+17;Stephen Hawking's warning for humanity: AI is coming for us;T1N;0.0813;0.8364;0.0822;5
+18;Italian healthcare workers may need to allocate limited COVID-19 treatments based on patients' survival likelihood.;T2N;0.2122;0.7615;0.0263;5
+19;NASA to remove DEI-related terms from its website;T3N;0.2613;0.72;0.0187;3
+20;OpenAI’s o1 Model “Schemed” to Avoid Shut Down;T4N;0.0413;0.8425;0.1162;4
+21;Dark messages on Google's AI chatbot Gemini sent to a college student;T5N;0.3756;0.6096;0.0148;4
+22;One Night Cough Syrup, which contained cannabis, morphine, and chloroform, is a product from the late 1900s.;T6N;0.0131;0.82;0.1669;2
+23;In the Gulf of Mexico is exists a Jacuzzi of Despair a pool of oceanic water that is uninhabitable for most marine life;T7N;0.29;0.6638;0.0463;3
+24;Vet issues warning to dog owners about toxic snow globes this Christmas;T8N;0.4052;0.5505;0.0443;3
+25;Facebook discontinued two AI robots after they developed their own language;F1N;0.1116;0.8327;0.0557;3
+26;The European Medicines Agency said that COVID-19 vaccines could have an effect on female fertility;F2N;0.333;0.648;0.018;4
+27;The city of London has closed 500 churches and opened 423 new mosques;F3N;0.2441;0.733;0.0228;4
+28;"European Union set to require ""Jewish-made"" products to be labeled as such.";F4N;0.1057;0.8626;0.0317;4
+29;World Economic Forum suggests AI-assisted interpretation of religious texts for accuracy.;F5N;0.0142;0.8708;0.1149;3
+30;Disney World has implemented a policy prohibiting farting inside its theme parks.;F6N;0.0584;0.8608;0.0808;3
+31;World Economic Forum recommends killing pets to alleviate climate change;F7N;0.4603;0.501;0.0387;6
+32;Oreo cookies are made with pork products.;F8N;0.227;0.703;0.070;2
