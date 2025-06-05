@@ -153,10 +153,14 @@ rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2,
 #Creating a final data set 
 data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation, education, condition)
 
+#Creating headline pairs
+data_n$headline_id <- substr(data_n$headline_code, 1, 2)
+
 #Centering the variables
 data_n$belief_mid <- data_n$belief - 5.5
 data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
 data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE) #accuracy belief as an ordinal variable
+emotionality_rating_c <- data_n$emotionality_rating - mean(data_n$emotionality_rating, na.rm = TRUE)
 
 View(data_n)
 ```
@@ -367,4 +371,23 @@ ggplot(item_summary_bfdf, aes(x = headline, y = mean, fill = emotionality)) +
   )
 ```
 
+```{r}
+#Additional Analysis
+model_clmm_icc <- clmm(factor(belief_mid, ordered = T) ~ 1 + (1 | participant_id) + (1 | headline_id), data = data_n,
+  link = "probit", Hess = TRUE)
+summary(model_clmm_icc)
+
+VarCorr <- model_clmm_probit$ST  # Standard deviations and correlations
+VarCorr_squared <- lapply(VarCorr, function(mat) mat^2)
+var_participant <- VarCorr_squared$participant_id[1,1]
+var_headline <- VarCorr_squared$headline_id[1,1]
+
+var_residual <- 1 # Residual variance for probit link
+
+var_total <-  var_participant + var_headline + var_residual 
+
+icc_participant <- var_participant / var_total
+icc_headline <- var_headline / var_total #warrants clustering as pairs 20%
+
+```
 
