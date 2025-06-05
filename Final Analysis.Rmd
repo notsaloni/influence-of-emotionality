@@ -162,47 +162,36 @@ View(data_n)
 ```
 
 ```{r}
-#manipulation check
-mani_emo <- lm(emotionality_rating ~ emotionality + veracity, data = data_n)
-summary(mani_emo)
+#MANIPULATION CHECK
 
-# Filter for True (T) and Fake (F) headlines
-true <- data_n %>% filter(grepl("T", headline_code))
-fake <- data_n %>% filter(grepl("F", headline_code))
 
-# Further split into Emotional (E) and Neutral (N) for True (T) and False (F)
-df_fake_highemo <- fake %>% filter(grepl("E$", headline_code))
-df_fake_lowemo <- fake %>% filter(grepl("N$", headline_code))
 
-df_true_highemo <- true %>% filter(grepl("E$", headline_code))
-df_true_lowemo <- true %>% filter(grepl("N$", headline_code))
-
-# Perform t-tests on emotionality ratings
-t.test(df_true_highemo$emotionality_rating, df_true_lowemo$emotionality_rating) #indicates that True high emotional headlines received a higher emotionality rating than True low emotional headlines
-cohen.d(df_true_highemo$emotionality_rating, df_true_lowemo$emotionality_rating)
-
-t.test(df_fake_highemo$emotionality_rating, df_fake_lowemo$emotionality_rating) #indicates that Fake high emotional headlines received a higher emotionality rating than Fake low emotional headlines
-cohen.d(df_fake_highemo$emotionality_rating, df_fake_lowemo$emotionality_rating)
-
-t.test(df_true_highemo$emotionality_rating, df_fake_highemo$emotionality_rating) #indicates that True high emotional and Fake high emotional headlines did not differ in their emotionality ratings
-t.test(df_true_lowemo$emotionality_rating, df_fake_lowemo$emotionality_rating) #indicates that True low emotional and Fake low emotional headlines did not differ in their emotionality ratings
 ```
 
 ```{r}
-model_ordinal <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
+#Pre-registered model
+model_pre <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
-    (1 | headline_code),
+    (1 | headline_code), #grouping at item level
   data = data_n, link="probit")
+summary(model_pre)
+
+
+#FINAL MODEL
+model_ordinal <- clmm(factor(belief_mid, ordered = T) ~ emotionality * veracity * CRT_c +
+    (1 + emotionality * veracity | participant_id) +
+    (1  + emotionality | headline_id), #grouping by pairs and adding emotionality slopes
+  data = data_n, 
+  link = "probit")
 summary(model_ordinal)
+anova(model_ordinal, model_pre) 
+
 
 model_ordinal_c <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
     (1 | headline_code),
   data = data_n, link="probit")
 summary(model_ordinal_c) #with demographic controls, emotionality main effect marginally significant!
-
-coef <- model_ordinal_c$beta 
-
 anova(model_ordinal, model_ordinal_c)
 
 #Bar plot
@@ -239,86 +228,30 @@ ggplot(summary_df, aes(x = veracity_f, y = mean_belief, fill = emotionality_f)) 
 ```
 
 ```{r}
-#Using lmer for sensitvity check
+#SENSITIVITY CHECKS
 model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
 summary(model)  
 
 #Secondary analysis controlling for demographics
 model_lmer_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
 summary(model_c)  
-
 anova(model_lmer, model_lmer_c) #no significant improvement after adding covariates
+
+#Excluding F2E& F2N and T1E & T1N pairs as the emotionality manipulation seems to not have worked as intended
+data_n_subset <- subset(data_n, !(headline_code %in% c("T1E", "T1N", "F2E", "F2N")))
+model_ord_sub <- clmm(factor(belief_mid, ordered = T) ~ emotionality * veracity * CRT_c +
+    (1 + emotionality * veracity | participant_id) +
+    (1  + emotionality | headline_id),
+  data = data_n_subset, 
+  link = "probit")
+summary(model_ord_sub) #consistent findings
 ```
 
 
 ```{r}
 #Moderation graph
-#grouping CRT scores in 3 groups: Low (0-2), Medium (3-4); High(5-6)
-data_n$CRT_group <- cut(data_n$CRT,
-                    breaks = c(-Inf, 2, 4, Inf),
-                    labels = c("Low", "Medium", "High"))
-tables(data_n$CRT_group)
-
-# Get predicted values for combinations of emotionality, veracity, and CRT_group
-mod<- lmer(belief_mid ~ emotionality * veracity * CRT_group +
-    (1 + emotionality * veracity | participant_id) +
-    (1 | headline_code),
-  data = data_n)
-summary(mod)
-
-emm <- emmeans(mod, ~ emotionality * veracity * CRT_group, at = list(CRT_group = c("Low", "Medium", "High")))
-
-pred_data <- summary(emm)
-pred_data$veracity <- factor(pred_data$veracity, levels = c("1", "0"))  # Order: True (1) first, then False (0)
-
-ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(veracity), group = veracity)) +
-  geom_point(size = 3) +
-  geom_line() +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
-  scale_color_manual(
-    name = "Veracity",
-    values = c("1" = "darkseagreen4", "0" = "indianred"),#darkcyan #coral2
-    labels = c("1" = "True", "0" = "False")
-  ) +
-  facet_wrap(~ factor(emotionality), labeller = labeller(`factor(emotionality)` = c("0" = "Low emotionality", "1" = "High emotionality"))) +
-  labs(x = "CRT Group", y = "Belief", color = "Veracity") +
-  theme_minimal()+
-  theme(
-    text = element_text(size = 10),
-    axis.title = element_text(size = 14),
-    axis.text = element_text(size = 10),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    strip.text = element_text(size = 14)
-  )
-
-ggplot(pred_data, aes(x = CRT_group, y = emmean, color = factor(emotionality), group = emotionality)) +
-  geom_point(size = 3) +
-  geom_line() +
-  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
-  scale_color_manual(
-    name = "Emotionality",
-    values = c("1" = "palevioletred4", "0" = "lightslategrey"),#darkcyan #coral2
-    labels = c("1" = "High", "0" = "Low")
-  ) +
-  facet_wrap(~ factor(veracity), labeller = labeller(`factor(veracity)` = c("0" = "False", "1" = "True"))) +
-  labs(x = "CRT Group", y = "Accuracy Belief", color = "Emotionality") +
-  theme_minimal()+
-  theme(
-    text = element_text(size = 10),
-    axis.title = element_text(size = 14),
-    axis.text = element_text(size = 10),
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 13),
-    strip.text = element_text(size = 14)
-  )
-
-###
-# Subset high emotionality headlines
-data_emotional <- data_n[grepl("E$", data_n$headline_code), ]
-
-# Subset all low emotionality headlines
-data_neutral <- data_n[grepl("N$", data_n$headline_code), ]
+data_emotional <- data_n[grepl("E$", data_n$headline_code), ] # Subset high emotionality headlines
+data_neutral <- data_n[grepl("N$", data_n$headline_code), ] # Subset all low emotionality headlines
 
 discernment_emodf <- data_emotional %>%
   group_by(participant_id, veracity) %>%
@@ -354,61 +287,6 @@ plot2<-ggplot(discernment_neudf, aes(x = CRT, y = discernment)) +
   theme(plot.title = element_text(hjust = 0.5))
 
 plot1 + plot2
-###
-
-#Line graph
-#2 separate graphs 
-ggplot(data_n, aes(x = CRT, y = belief, color = as.factor(emotionality))) +
-  geom_smooth(method = "lm", se = FALSE) +
-  facet_wrap(~ veracity, labeller = as_labeller(c("0" = "False", "1" = "True"))) +
-   scale_color_manual(
-    values = c("1" = "palevioletred4", "0" = "lightslategrey"),
-    labels = c("1" = "High", "0" = "Low")
-  ) +
-  labs(
-    x = "Cognitive Reflection Test (CRT) Score",
-    y = "Perceived Accuracy",
-    color = "Emotionality"
-  ) +
-  theme_minimal()
-
-#1 combined graph
-# Relabel the levels for clearer legend
-data_n$condition <- factor(data_n$condition, levels = c("Low-True", "High-True", "Low-False", "High-False"))
-
-ggplot(data_n, aes(x = CRT, y = belief, color = condition, linetype = condition)) +
-  geom_smooth(method = "lm", se = FALSE) +
-  scale_color_manual(
-    values = c("Low-False" = "indianred","High-False" = "red4","Low-True" = "paleturquoise3","High-True" = "seagreen4"), 
-   labels = c("Low-True" = "Low Emotionality - True", "High-True" = "High Emotionality - True", "Low-False" = "Low Emotionality - False", "High-False" = "High Emotionality - False"), name = "Condition") +
-  scale_linetype_manual(
-    values = c("Low-True" = "dotted","High-True" = "solid","Low-False" = "dotted","High-False" = "solid"), 
-   labels = c("Low-True" = "Low Emotionality - True","High-True" = "High Emotionality - True","Low-False" = "Low Emotionality - False", "High-False" = "High Emotionality - False"), name = "Condition") +
-  labs(x = "CRT",y = "Accuracy Belief", color = "Condition") +
-  theme_minimal() +
-  theme(axis.title.x = element_text(size = 14),axis.title.y = element_text(size = 14), legend.title = element_text(size = 14),legend.text = element_text(size = 12)
-  )
-```
-
-
-```{r}
-#Assumption checks 
-# Residuals vs. fitted values
-plot(model) #strong slant lines
-
-# Q-Q plot for residuals
-qqnorm(resid(model))
-qqline(resid(model))
-
-table(data_n$belief) #Since we have enough levels (11) to reasonably consider treating it as continuous.
-table(data_n$belief_mid) 
-
-ggplot(data_n, aes(x = belief_mid)) +
-  geom_bar(fill = "steelblue3") +
-  labs(title = "Distribution of Belief", x = "Belief stages", y = "Count") +
-  theme_minimal()
-
-prop.table(table(data_n$belief_mid)) #The distribution is somewhat skewed, with ~24% of responses at stage 0. However, all levels are represented, and no single level dominates the majority (e.g., nothing above 50%).
 ```
 
 ```{r}
