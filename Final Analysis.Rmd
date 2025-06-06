@@ -131,14 +131,10 @@ crt_2<-rep(data_B$CRT_score, each=16)
 CRT<-c(crt_1, crt_2)
 
 #Belief per participant
-belief_1 <- as.vector(t(data_A[, 8:23]))
-belief_2 <- as.vector(t(data_B[, 40:55]))
-belief<-c(belief_1, belief_2)
+belief<-c(as.vector(t(data_A[, 8:23])), as.vector(t(data_B[, 40:55])))
 
 #Emotionality rating
-emorating_1<-as.vector(t(data_A[,24:39]))
-emorating_2 <- as.vector(t(data_B[, 56:71]))
-emotionality_rating<-c(emorating_1, emorating_2)
+emotionality_rating<-c(as.vector(t(data_A[,24:39])), as.vector(t(data_B[, 56:71])))
 
 #group categorisation (Series A/B)
 series <- c(rep("A", length(grp1)), rep("B", length(grp2)))
@@ -148,40 +144,39 @@ edu_1<-rep(data_A$Educational.level, each = 16)
 edu_2<-rep(data_B$Educational.level, each = 16)
 education<-c(edu_1, edu_2)
 
-rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, belief_1, belief_2, emorating_1, emorating_2, edu_1, edu_2, con_1, con_2)#removing unnecessary variables from the environment
+rm(grp1, grp2, grp1_emo, grp2_emo, age_1, age_2, gender_1, gender_2, po_1, po_2, crt_1, crt_2, edu_1, edu_2, con_1, con_2)#removing unnecessary variables from the environment
 
 #Creating a final data set 
 data_n<-data.frame(participant_id, headline_code, emotionality, veracity, belief, emotionality_rating, CRT, series, age, gender, political_orientation, education, condition)
 
-#Creating headline pairs
+#Creating headline pairs as per claims T1, F1 so on. 
 data_n$headline_id <- substr(data_n$headline_code, 1, 2)
 
 #Centering the variables
 data_n$belief_mid <- data_n$belief - 5.5
 data_n$CRT_c <- data_n$CRT - mean(data_n$CRT, na.rm = TRUE)
-data_n$belief_mid_ord <- factor(data_n$belief_mid, ordered = TRUE) #accuracy belief as an ordinal variable
-emotionality_rating_c <- data_n$emotionality_rating - mean(data_n$emotionality_rating, na.rm = TRUE)
+data_n$emotionality_mid<- data_n$emotionality_rating - 5.5
 
 View(data_n)
 ```
 
 ```{r}
 #MANIPULATION CHECK
+model_mani <- clmm(factor(emotionality_mid,ordered=T) ~ emotionality * veracity + (1 + emotionality * veracity| participant_id) + (1 +emotionality| headline_id), data = data_n, link = "probit")
 
-
-
+summary(model_mani)
 ```
 
 ```{r}
 #Pre-registered model
-model_pre <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c +
+model_pre <- clmm(factor(belief_mid, ordered = T) ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
     (1 | headline_code), #grouping at item level
   data = data_n, link="probit")
 summary(model_pre)
 
 
-#FINAL MODEL
+#FINAL MODEL --> deviation (1  + emotionality | headline_id) grouping by claims
 model_ordinal <- clmm(factor(belief_mid, ordered = T) ~ emotionality * veracity * CRT_c +
     (1 + emotionality * veracity | participant_id) +
     (1  + emotionality | headline_id), #grouping by pairs and adding emotionality slopes
@@ -190,10 +185,9 @@ model_ordinal <- clmm(factor(belief_mid, ordered = T) ~ emotionality * veracity 
 summary(model_ordinal)
 anova(model_ordinal, model_pre) 
 
-
-model_ordinal_c <- clmm(belief_mid_ord ~ emotionality * veracity * CRT_c + age + gender + political_orientation +
+model_ordinal_c <- clmm(factor(belief_mid, ordered = T)~ emotionality * veracity * CRT_c + age + gender + political_orientation +
     (1 + emotionality*veracity | participant_id) +
-    (1 | headline_code),
+    (1 +emotionality | headline_id),
   data = data_n, link="probit")
 summary(model_ordinal_c) #with demographic controls, emotionality main effect marginally significant!
 anova(model_ordinal, model_ordinal_c)
@@ -219,27 +213,17 @@ summary_df <- data_n %>%
 # Plot
 ggplot(summary_df, aes(x = veracity_f, y = mean_belief, fill = emotionality_f)) +
   geom_bar(stat = "identity", position = position_dodge(0.8), width = 0.7) +
-  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper),
-                position = position_dodge(0.8), width = 0.25) +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), position = position_dodge(0.8), width = 0.25) +
   scale_fill_manual(values = c("Low Emotional" = "slategray2", "High Emotional" = "salmon3")) +
-  labs(
-    x = "Headline Veracity",
-    y = "Average Accuracy Belief",
-    fill = "Emotionality"
-  ) +
+  labs(x = "Headline Veracity", y = "Average Accuracy Belief", fill = "Emotionality") +
   theme_minimal() +
   theme(legend.position = "right")
 ```
 
 ```{r}
 #SENSITIVITY CHECKS
-model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit)
-summary(model)  
-
-#Secondary analysis controlling for demographics
-model_lmer_c= lmerTest::lmer(belief_mid ~ emotionality*veracity*CRT_c + political_orientation + age + gender+ (1 + emotionality*veracity|participant_id) +(1|headline_code), data=data_n, na.action=na.omit) #no effect of political orientation, age or gender
-summary(model_c)  
-anova(model_lmer, model_lmer_c) #no significant improvement after adding covariates
+model_lmer= lmerTest::lmer(belief_mid~ emotionality*veracity*CRT_c+ (1 + emotionality*veracity|participant_id) +(1 + emotionality|headline_id), data=data_n, na.action=na.omit)
+summary(model_lmer)  
 
 #Excluding F2E& F2N and T1E & T1N pairs as the emotionality manipulation seems to not have worked as intended
 data_n_subset <- subset(data_n, !(headline_code %in% c("T1E", "T1N", "F2E", "F2N")))
@@ -296,6 +280,7 @@ plot1 + plot2
 ```{r}
 #ADDITIONAL PLOTS
 #################
+#################
 headline_labels <- c("T1E", "T2E", "T3E", "T4E", "T5N", "T6N", "T7N", "T8N", "F1E", "F2E", "F3E", "F4E", "F5N", "F6N", "F7N", "F8N","T1N", "T2N", "T3N", "T4N", "T5E", "T6E", "T7E", "T8E", "F1N", "F2N", "F3N", "F4N", "F5E", "F6E", "F7E", "F8E")
 custom_order <- c("T1E","T1N","T2E","T2N","T3E","T3N","T4E","T4N","T5E","T5N","T6E","T6N","T7E","T7N","T8E", "T8N", "F1E","F1N",  "F2E",  "F2N", "F3E",  "F3N", "F4E", "F4N", "F5E",   "F5N","F6E",   "F6N","F7E",  "F7N","F8E",  "F8N")
 
@@ -322,9 +307,16 @@ item_summary_df <- item_summary_df %>%
 item_summary_df <- item_summary_df %>%
   mutate(emotionality = ifelse(grepl("E$", headline), "High Emotionality", "Low Emotionality"))
 
-# View output
-head(item_summary_df)
-str(item_summary_df)
+item_summary_df <- item_summary_df %>%
+  arrange(headline)
+
+item_summary_df <- item_summary_df %>%
+  mutate(
+    pair_id = rep(1:16, each = 2),                  # 16 pairs of 2 bars each
+    bar_in_pair = rep(c(0, 1), times = 16),         # 0 for first, 1 for second in each pair
+    x_position = pair_id * 2 + bar_in_pair * 0.6    # First bar: 2, second bar: 2.6
+  )
+
 
 item_summary_bf <- t(apply(belief_items, 2, get_item_stats)) #belief items
 item_summary_bfdf <- as.data.frame(item_summary_bf)
@@ -335,40 +327,79 @@ item_summary_bfdf <- item_summary_bfdf %>%
 item_summary_bfdf <- item_summary_bfdf %>%
   mutate(emotionality = ifelse(grepl("E$", headline), "High Emotionality", "Low Emotionality"))
 
-# View output
-head(item_summary_bfdf)
-str(item_summary_bfdf)
+item_summary_bfdf <- item_summary_bfdf %>%
+  arrange(headline)
 
+item_summary_bfdf <- item_summary_bfdf %>%
+  mutate(
+    pair_id = rep(1:16, each = 2),                  # 16 pairs of 2 bars each
+    bar_in_pair = rep(c(0, 1), times = 16),         # 0 for first, 1 for second in each pair
+    x_position = pair_id * 2 + bar_in_pair * 0.6    # First bar: 2, second bar: 2.6
+  )
+item_summary_df$pair_id <- rep(c(paste0("T", 1:8), paste0("F", 1:8)), each = 2)
+
+pair_labels_df <- item_summary_df %>%
+  group_by(pair_id) %>%
+  dplyr::slice(1) %>%            # keep first row per group
+  ungroup() %>%
+  mutate(
+    x = x_position+0.3,       # assuming this column positions each bar
+    y = -0.3              # adjust vertically as needed for visibility
+  )
 
 # Plot Emotionality Ratings with error bars
-ggplot(item_summary_df, aes(x = headline, y = mean, fill = emotionality)) +
+ggplot(item_summary_df, aes(x = x_position, y = mean, fill = emotionality)) +
   geom_bar(stat = "identity", width = 0.6) +
-  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.2) +
+  geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), 
+                width = 0.2) +
   scale_fill_manual(values = c("High Emotionality" = "#FD6467", "Low Emotionality" = "#F1BB7B"),
                     name = "Emotionality") +
   facet_wrap(~truth, scales = "free_x") +
-  labs(x = "Headline Code", y = "Mean Emotionality Rating") +
+  scale_x_continuous(breaks = NULL) + 
+  geom_text(data = pair_labels_df, aes(x = x, y = y, label = pair_id),
+            inherit.aes = FALSE, size = 3.5, vjust = 1) +
+  labs(x = "Headlines", y = "Mean Emotionality Rating") +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 12),
-    strip.text = element_text(size = 14, face = "bold")
+  axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
+  axis.text.y = element_text(size = 12),
+  strip.text = element_text(size = 14, face = "bold"),
+  panel.grid.major.x = element_blank(),
+  panel.grid.minor.x = element_blank()
+)
+
+item_summary_bfdf$pair_id <- rep(c(paste0("T", 1:8), paste0("F", 1:8)), each = 2)
+
+pair_labels_bfdf <- item_summary_bfdf %>%
+  group_by(pair_id) %>%
+  dplyr::slice(1) %>%            # keep first row per group
+  ungroup() %>%
+  mutate(
+    x = x_position+0.3,       # assuming this column positions each bar
+    y = -0.3              # adjust vertically as needed for visibility
   )
 
+
 # Plot Belief Ratings with error bars
-ggplot(item_summary_bfdf, aes(x = headline, y = mean, fill = emotionality)) +
+ggplot(item_summary_bfdf, aes(x = x_position, y = mean, fill = emotionality)) +
   geom_bar(stat = "identity", width = 0.6) +
   geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI), width = 0.2) +
   scale_fill_manual(values = c("High Emotionality" = "#FD6467", "Low Emotionality" = "#F1BB7B"),
                     name = "Emotionality") +
   facet_wrap(~truth, scales = "free_x") +
-  labs(x = "Headline Code", y = "Mean Belief Rating") +
+  scale_x_continuous(breaks = NULL) + 
+  geom_text(data = pair_labels_bfdf, aes(x = x, y = y, label = pair_id),
+            inherit.aes = FALSE, size = 3.5, vjust = 1) +
+  labs(x = "Headlines", y = "Mean Belief Rating") +
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 10, angle = 45, hjust = 1),
     axis.text.y = element_text(size = 12),
-    strip.text = element_text(size = 14, face = "bold")
+    strip.text = element_text(size = 14, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
   )
+
 ```
 
 ```{r}
